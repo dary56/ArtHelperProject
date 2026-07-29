@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Добавить журнал{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h3 class="mb-4">Добавить журнал</h3>
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Название журнала</label>
+                        <input type="text" name="title" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Сохранить</button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-link">Отмена</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

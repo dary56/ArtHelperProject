@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Создать статью{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h3 class="mb-4">Создать статью</h3>
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Выберите журнал</label>
+                        <select name="journal" class="form-select" required>
+                            <option value="">— выберите —</option>
+                            {% for journal in journals %}
+                            <option value="{{ journal.pk }}">{{ journal.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Загрузить черновик (.docx) — опционально</label>
+                        <input type="file" name="draft" accept=".docx" class="form-control">
+                        <div class="form-text">Загрузите файл .docx с текстом Вашей статьи (первая строка — название
+                            статьи) —
+                            система автоматически подставит его в редактор.
+                            Если Вам удобнее начать работу сразу в редакторе,
+                            просто нажмите «Продолжить».</div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Продолжить</button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-link">Отмена</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

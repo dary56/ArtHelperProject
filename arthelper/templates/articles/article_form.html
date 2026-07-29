@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+{{ article_form.media }}
+<h3 class="mb-4">{{ title }}</h3>
+
+<form method="post" id="article-form">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="article">
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            {% for field in meta_form %}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0">{{ field.label }}</label>
+                    {% if not is_new %}
+                    {% if field.name == 'annotation_ru' %}
+                    <button type="button" class="btn btn-sm btn-outline-primary"
+                        onclick="generateAnnotation()">Сгенерировать из текста</button>
+                    {% elif field.name == 'keywords_ru' %}
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="generateKeywords()">Извлечь из
+                        текста</button>
+                    {% elif field.name == 'title_en' %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="translateField('title_ru', 'id_title_en')">Перевести название</button>
+                    {% elif field.name == 'annotation_en' %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="translateField('annotation_ru', 'id_annotation_en')">Перевести аннотацию</button>
+                    {% elif field.name == 'keywords_en' %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="translateField('keywords_ru', 'id_keywords_en')">Перевести ключевые слова</button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+                {% if field.name == 'udc' %}
+                <div class="input-group">
+                    {{ field }}
+                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal"
+                        data-bs-target="#udcModal">Выбрать из таблицы</button>
+                </div>
+                {% else %}
+                {{ field }}
+                {% endif %}
+
+                {% if field.errors %}
+                <div class="text-danger small">{{ field.errors.0 }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if not is_new %}
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <h5>Текст статьи</h5>
+            <div class="mb-3">
+                {{ article_form.content_html }}
+                {% if article_form.content_html.errors %}
+                <div class="text-danger small">{{ article_form.content_html.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</form>
+
+{% if not is_new %}
+<!-- Авторы -->
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <h5>Авторы</h5>
+
+        <!-- Добавление студента -->
+        <form method="post" class="row g-2 align-items-end mb-2">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="author">
+            <input type="hidden" name="add_student_author" value="1">
+            <div class="col-md-8">
+                <label class="form-label small text-muted">Студент</label>
+                {{ student_author_form.user }}
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-success w-100">+ Добавить студента</button>
+            </div>
+        </form>
+
+        <!-- Добавление преподавателя -->
+        <form method="post" class="row g-2 align-items-end mb-3">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="author">
+            <input type="hidden" name="add_teacher_author" value="1">
+            <div class="col-md-8">
+                <label class="form-label small text-muted">Преподаватель</label>
+                {{ teacher_author_form.user }}
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-success w-100">+ Добавить преподавателя</button>
+            </div>
+        </form>
+
+        <!-- Список -->
+        <div class="list-group">
+            {% for a in authors %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ a.order_num }}. {{ a.user.full_name }} ({{ a.user.get_role_display }})</span>
+                <a href="{% url 'author_delete' a.pk %}" class="btn btn-outline-danger btn-sm"
+                    onclick="return confirm('Удалить автора?')">Удалить</a>
+            </div>
+            {% empty %}
+            <p class="text-muted">Нет добавленных авторов.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Источники -->
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <h5>Источники литературы</h5>
+        <div class="list-group mb-3">
+            {% for ref in references %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="badge bg-secondary">{{ ref.get_source_type_display }}</small>
+                        <p class="mb-1">{{ ref.order_num }}. {{ ref.gost_string|default:ref.raw_data.title }}</p>
+                    </div>
+                    <a href="{% url 'reference_delete' ref.pk %}" class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('Удалить источник?')">Удалить</a>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted">Нет добавленных источников.</p>
+            {% endfor %}
+        </div>
+
+        <ul class="nav nav-tabs mb-3" id="refTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="doi-tab" data-bs-toggle="tab" data-bs-target="#doi-pane"
+                    type="button">По DOI</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-pane"
+                    type="button">Вручную</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="refTabContent">
+            <!-- DOI -->
+            <div class="tab-pane fade show active" id="doi-pane" role="tabpanel">
+                <form method="post" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="reference">
+                    <input type="hidden" name="doi_mode" value="1">
+                    <div class="col-md-9">
+                        <label class="small text-muted">DOI</label>
+                        {{ doi_form.doi }}
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" name="add_reference" class="btn btn-outline-success w-100">+
+                            Добавить</button>
+                    </div>
+                </form>
+                <small class="text-muted">Тип источника определится автоматически</small>
+            </div>
+
+            <!-- Ручной -->
+            <div class="tab-pane fade" id="manual-pane" role="tabpanel">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="reference">
+
+                    <div class="mb-3">
+                        <label class="form-label">Тип источника</label>
+                        {{ manual_form.source_type }}
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="small text-muted">Авторы</label>
+                            {{ manual_form.authors }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted">Название *</label>
+                            {{ manual_form.title }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="small text-muted">Год</label>
+                            {{ manual_form.year }}
+                        </div>
+                        <div class="col-md-8">
+                            <label class="small text-muted">Журнал / Издательство</label>
+                            {{ manual_form.journal }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2 print-fields">
+                        <div class="col-md-6">
+                            <label class="small text-muted">Номер выпуска</label>
+                            {{ manual_form.issue }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted">Страницы</label>
+                            {{ manual_form.pages }}
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2 electronic-fields" style="display:none;">
+                        <div class="col-md-12">
+                            <label class="small text-muted">URL</label>
+                            {{ manual_form.url }}
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <button type="submit" name="add_reference" class="btn btn-outline-success">+
+                                Добавить</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <button type="submit" form="article-form" class="btn btn-success btn-lg">Сохранить статью</button>
+    <a href="{% url 'dashboard' %}" class="btn btn-link">Отмена</a>
+</div>
+
+<!-- Модальное окно УДК -->
+<div class="modal fade" id="udcModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="udc-modal-title">Таблица УДК</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="udc-search" class="form-control mb-3"
+                    placeholder="Поиск по коду или названию...">
+
+                <!-- Кнопка Назад -->
+                <div id="udc-back" class="mb-2" style="display:none;">
+                    <a href="javascript:void(0)" class="text-decoration-none" onclick="udcGoBack()">← Назад</a>
+                </div>
+
+                <!-- Список кодов -->
+                <div class="list-group" id="udc-list" style="max-height: 400px; overflow-y: auto;">
+                    <!-- JS заполняет -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // === УДК: дерево данных ===
+    const udcTree = [
+        {
+            code: '00',
+            name: 'Наука в целом. Информация. Документация',
+            children: [
+                {
+                    code: '004',
+                    name: 'Информационные технологии. Вычислительная техника',
+                    children: [
+                        { code: '004.01', name: 'Документация' },
+                        { code: '004.02', name: 'Методы решения задач' },
+                        { code: '004.03', name: 'Типы и характеристики систем' },
+                        { code: '004.04', name: 'Ориентация процесса обработки данных' },
+                        { code: '004.05', name: 'Качество систем и программ' },
+                        { code: '004.07', name: 'Характеристики памяти' },
+                        { code: '004.08', name: 'Носители вводимых и выводимых данных' },
+                        { code: '004.2', name: 'Архитектура вычислительных машин' },
+                        { code: '004.3', name: 'Аппаратные средства. Техническое обеспечение' },
+                        { code: '004.4', name: 'Программные средства' },
+                        { code: '004.5', name: 'Человеко-машинное взаимодействие' },
+                        {
+                            code: '004.6',
+                            name: 'Данные',
+                            children: [
+                                { code: '004.62', name: 'Манипулирование данными' },
+                                { code: '004.63', name: 'Файлы' },
+                                { code: '004.65', name: 'Системы управления базами данных (СУБД)' },
+                                { code: '004.67', name: 'Системы обработки численных данных' },
+                            ]
+                        },
+                        { code: '004.7', name: 'Связь компьютеров. Сети ЭВМ' },
+                        { code: '004.8', name: 'Искусственный интеллект' },
+                        { code: '004.9', name: 'Прикладные информационные технологии' },
+                    ]
+                },
+                { code: '005', name: 'Управление предприятием' },
+                { code: '006', name: 'Стандартизация' },
+                { code: '007', name: 'Деятельность и организация' },
+            ]
+        },
+        { code: '1', name: 'Философия. Психология' },
+        { code: '2', name: 'Религия. Теология' },
+        {
+            code: '3',
+            name: 'Общественные науки',
+            children: [
+                {
+                    code: '33',
+                    name: 'Экономика. Народное хозяйство. Экономические науки',
+                    children: [
+                        { code: '330', name: 'Экономические науки в целом. Политическая экономия' },
+                        { code: '331', name: 'Труд. Наука о труде. Экономика труда' },
+                        { code: '332', name: 'Региональная (территориальная) экономика' },
+                        { code: '334', name: 'Формы организаций и сотрудничества в экономике' },
+                        { code: '336', name: 'Финансы. Банковское дело. Деньги' },
+                        { code: '338', name: 'Экономическое положение. Экономическая политика' },
+                        { code: '339', name: 'Торговля. Международные экономические отношения' },
+                    ]
+                },
+                { code: '34', name: 'Право. Юридические науки' },
+                { code: '35', name: 'Государственное административное управление. Военное дело' },
+                { code: '37', name: 'Народное образование. Воспитание. Обучение' },
+            ]
+        },
+        { code: '5', name: 'Математика. Естественные науки' },
+        { code: '6', name: 'Прикладные науки. Медицина. Техника' },
+        { code: '7', name: 'Искусство. Декоративно-прикладное искусство' },
+        { code: '8', name: 'Языкознание. Филология. Литература' },
+        { code: '9', name: 'География. Биография. История' },
+    ];
+
+    // === Навигация ===
+    let udcHistory = [];
+    let udcCurrentItems = [];
+
+    function udcRender(items, parentName) {
+        const list = document.getElementById('udc-list');
+        const back = document.getElementById('udc-back');
+        const title = document.getElementById('udc-modal-title');
+
+        list.innerHTML = '';
+        udcCurrentItems = items;
+
+        if (parentName) {
+            back.style.display = 'block';
+            title.textContent = parentName;
+        } else {
+            back.style.display = 'none';
+            title.textContent = 'Таблица УДК';
+        }
+
+        items.forEach(item => {
+            const hasChildren = item.children && item.children.length > 0;
+            const btn = document.createElement('a');
+            btn.href = 'javascript:void(0)';
+            btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+
+            if (hasChildren) {
+                btn.innerHTML = `<span><strong>${item.code}</strong> — ${item.name}</span><span>→</span>`;
+                btn.onclick = () => {
+                    udcHistory.push({ items: udcCurrentItems, name: title.textContent });
+                    udcRender(item.children, item.code + ' — ' + item.name);
+                };
+            } else {
+                btn.innerHTML = `<span><strong>${item.code}</strong> — ${item.name}</span>`;
+                btn.onclick = () => {
+                    document.getElementById('id_udc').value = item.code;
+                    const modalEl = document.getElementById('udcModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modal.hide();
+                };
+            }
+            list.appendChild(btn);
+        });
+    }
+
+    function udcGoBack() {
+        if (udcHistory.length > 0) {
+            const prev = udcHistory.pop();
+            udcRender(prev.items, prev.name === 'Таблица УДК' ? null : prev.name);
+        } else {
+            udcRender(udcTree, null);
+        }
+    }
+
+    // Поиск по всему дереву
+    const udcSearch = document.getElementById('udc-search');
+    if (udcSearch) {
+        udcSearch.addEventListener('input', function () {
+            const val = this.value.toLowerCase();
+            if (val.length < 2) {
+                udcRender(udcTree, null);
+                udcHistory = [];
+                return;
+            }
+            const found = [];
+            function search(items) {
+                items.forEach(item => {
+                    if (item.code.toLowerCase().includes(val) || item.name.toLowerCase().includes(val)) {
+                        found.push(item);
+                    }
+                    if (item.children) search(item.children);
+                });
+            }
+            search(udcTree);
+            udcRender(found, 'Результаты поиска');
+            udcHistory = [];
+        });
+    }
+
+    // При открытии модального окна — сброс на корень
+    document.getElementById('udcModal').addEventListener('show.bs.modal', () => {
+        udcHistory = [];
+        udcRender(udcTree, null);
+        document.getElementById('udc-search').value = '';
+    });
+
+    // === Переключение полей источника вручную ===
+    const sourceType = document.getElementById('manual-source-type');
+    if (sourceType) {
+        function toggleFields() {
+            const printFields = document.querySelector('.print-fields');
+            const electronicFields = document.querySelector('.electronic-fields');
+            if (sourceType.value === 'electronic') {
+                if (printFields) printFields.style.display = 'none';
+                if (electronicFields) electronicFields.style.display = 'flex';
+            } else {
+                if (printFields) printFields.style.display = 'flex';
+                if (electronicFields) electronicFields.style.display = 'none';
+            }
+        }
+        sourceType.addEventListener('change', toggleFields);
+        toggleFields();
+    }
+
+    /* --- CSRF для fetch --- */
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    /* --- Генерация аннотации --- */
+    async function generateAnnotation() {
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Генерация...';
+        try {
+            const r = await fetch("{% url 'generate_annotation' article.pk %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken }
+            });
+            const data = await r.json();
+            document.getElementById('id_annotation_ru').value = data.annotation;
+        } catch (e) {
+            alert('Ошибка генерации аннотации');
+        } finally {
+            btn.disabled = false; btn.textContent = original;
+        }
+    }
+
+    /* --- Извлечение ключевых слов --- */
+    async function generateKeywords() {
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Извлечение...';
+        try {
+            const r = await fetch("{% url 'generate_keywords' article.pk %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken }
+            });
+            const data = await r.json();
+            document.getElementById('id_keywords_ru').value = data.keywords;
+        } catch (e) {
+            alert('Ошибка извлечения ключевых слов');
+        } finally {
+            btn.disabled = false; btn.textContent = original;
+        }
+    }
+
+    /* --- Перевод метаданных --- */
+    async function translateField(sourceName, targetId) {
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Перевод...';
+
+        const source = document.getElementById('id_' + sourceName);
+        const text = source ? source.value.trim() : '';
+        if (!text) {
+            alert('Сначала заполните соответствующее русскоязычное поле');
+            btn.disabled = false; btn.textContent = original;
+            return;
+        }
+
+        try {
+            const r = await fetch("{% url 'translate_metadata' article.pk %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ field: sourceName, text: text })
+            });
+            const data = await r.json();
+            document.getElementById(targetId).value = data.translation;
+        } catch (e) {
+            alert('Ошибка перевода');
+        } finally {
+            btn.disabled = false; btn.textContent = original;
+        }
+    }
+</script>
+{% endblock %}

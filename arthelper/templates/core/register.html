@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="d-flex align-items-center mb-3">
+            <a href="{% url 'index' %}" class="back-arrow">←</a>
+            <h3 class="ms-3 mb-0">Регистрация</h3>
+        </div>
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors.0 }}</div>
+                    {% endif %}
+                    {% for field in form %}
+                    <div class="mb-3" id="field_{{ field.name }}">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success w-100">Зарегистрироваться</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const role = document.getElementById('id_role');
+    const studentFields = ['field_faculty', 'field_education_level', 'field_course'];
+    const teacherFields = ['field_degree', 'field_academic_rank', 'field_position', 'field_department'];
+
+    function toggleRole() {
+        const isStudent = role.value === 'student';
+        studentFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isStudent ? 'block' : 'none';
+        });
+        teacherFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isStudent ? 'none' : 'block';
+        });
+    }
+    role.addEventListener('change', toggleRole);
+    toggleRole();
+
+    // Курсы под уровень
+    const level = document.getElementById('id_education_level');
+    const course = document.getElementById('id_course');
+    const limits = {
+        'бакалавриат': 4,
+        'специалитет': 5,
+        'магистратура': 2,
+        'аспирантура': 3
+    };
+
+    function updateCourse() {
+        const max = limits[level.value] || 6;
+        const current = course.value;
+        course.innerHTML = '<option value="">— не выбран —</option>';
+        for (let i = 1; i <= max; i++) {
+            const selected = (current == i) ? 'selected' : '';
+            course.innerHTML += `<option value="${i}" ${selected}>${i} курс</option>`;
+        }
+    }
+    level.addEventListener('change', updateCourse);
+    updateCourse();
+</script>
+{% endblock %}

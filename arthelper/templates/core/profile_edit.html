@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Редактирование профиля{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h3 class="mb-4">Изменить данные</h3>
+        <div class="card shadow">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">Сохранить</button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-link">Отмена</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Курсы под уровень образования
+    const level = document.getElementById('id_education_level');
+    const course = document.getElementById('id_course');
+    if (level && course) {
+        const limits = {
+            'бакалавриат': 4,
+            'специалитет': 5,
+            'магистратура': 2,
+            'аспирантура': 3
+        };
+
+        function updateCourse() {
+            const max = limits[level.value] || 6;
+            const current = course.value;  // сохраняем текущий выбор
+            course.innerHTML = '<option value="">— не выбран —</option>';
+            for (let i = 1; i <= max; i++) {
+                const selected = (current == i) ? 'selected' : '';
+                course.innerHTML += `<option value="${i}" ${selected}>${i} курс</option>`;
+            }
+        }
+        level.addEventListener('change', updateCourse);
+        updateCourse();
+    }
+</script>
+{% endblock %}

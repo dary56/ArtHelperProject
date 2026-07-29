@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <h2 class="mb-4">Система оформления научных публикаций</h2>
+        <p class="text-muted mb-4">ФГБОУ ВО Кубанский ГАУ</p>
+
+        {% if user.is_authenticated %}
+        <div class="alert alert-success">
+            <p class="mb-2">Вы вошли как <strong>{{ user.full_name }}</strong></p>
+            <a href="{% url 'dashboard' %}" class="btn btn-success">Перейти в личный кабинет</a>
+        </div>
+        {% else %}
+        <div class="d-grid gap-3">
+            <a href="{% url 'register' %}" class="btn btn-success btn-lg">Регистрация</a>
+            <a href="{% url 'login' %}" class="btn btn-outline-success btn-lg">Вход</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
